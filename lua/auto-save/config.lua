@@ -24,33 +24,8 @@ Config = {
     debug = false, -- print debug messages, set to `true` to enable
   },
 }
-
-function Config:handle_deprecations(custom_opts)
-  if custom_opts["execution_message"] then
-    vim.notify(
-      "The `execution_message` has been removed from the auto-save.nvim plugin. Check the Readme on how to add it yourself.",
-      vim.log.levels.WARN
-    )
-    custom_opts["execution_message"] = nil
-  end
-
-  if custom_opts["trigger_events"] and custom_opts["trigger_events"]["cancel_defered_save"] then
-    vim.notify(
-      "The `cancel_defered_save` config option in the auto-save.nvim plugin has been renamed to `cancel_deferred_save`.",
-      vim.log.levels.WARN
-    )
-    custom_opts["trigger_events"]["cancel_deferred_save"] = custom_opts["trigger_events"]["cancel_defered_save"]
-    custom_opts["trigger_events"]["cancel_defered_save"] = nil
-  end
-
-  return custom_opts
-end
-
 function Config:set_options(custom_opts)
   custom_opts = custom_opts or {}
-
-  custom_opts = self:handle_deprecations(custom_opts)
-
   self.opts = vim.tbl_deep_extend("keep", custom_opts, self.opts)
 end
 

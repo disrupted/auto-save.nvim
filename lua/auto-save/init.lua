@@ -67,6 +67,10 @@ local function save(buf)
     return
   end
 
+  if not should_be_saved(buf) then
+    return
+  end
+
   if not api.nvim_buf_get_option(buf, "modified") then
     logger.log(buf, "Abort saving buffer")
 
@@ -95,14 +99,9 @@ local function immediate_save(buf)
   save(buf)
 end
 
-local save_func = nil
+local save_func
 --- @param buf number
 local function defer_save(buf)
-  -- is it really needed to cache this function
-  -- TODO: remove?
-  if save_func == nil then
-    save_func = (cnf.opts.debounce_delay > 0 and debounce(save, cnf.opts.debounce_delay) or save)
-  end
   save_func(buf)
 end
 
@@ -112,27 +111,21 @@ function M.on()
   local events = cnf.opts.trigger_events
   autocmds.create_autocmd_for_trigger_events(events.immediate_save, {
     callback = function(opts)
-      if should_be_saved(opts.buf) then
-        immediate_save(opts.buf)
-      end
+      immediate_save(opts.buf)
     end,
     group = augroup,
     desc = "Immediately save a buffer",
   })
   autocmds.create_autocmd_for_trigger_events(events.defer_save, {
     callback = function(opts)
-      if should_be_saved(opts.buf) then
-        defer_save(opts.buf)
-      end
+      defer_save(opts.buf)
     end,
     group = augroup,
     desc = "Save a buffer after the `debounce_delay`",
   })
   autocmds.create_autocmd_for_trigger_events(events.cancel_deferred_save, {
     callback = function(opts)
-      if should_be_saved(opts.buf) then
-        cancel_timer(opts.buf)
-      end
+      cancel_timer(opts.buf)
     end,
     group = augroup,
     desc = "Cancel a pending save timer for a buffer",
@@ -162,6 +155,7 @@ end
 function M.setup(custom_opts)
   cnf:set_options(custom_opts)
   logger = require("auto-save.utils.logging").new(cnf:get_options())
+  save_func = cnf.opts.debounce_delay > 0 and debounce(save, cnf.opts.debounce_delay) or save
 
   if autosave_running == nil then
     if cnf.opts.enabled then
